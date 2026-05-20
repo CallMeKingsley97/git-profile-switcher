@@ -1,0 +1,46 @@
+import { invoke } from "@tauri-apps/api/core";
+import type {
+  BackupEntry,
+  EnvScanReport,
+  GitConfigSnapshot,
+  Profile,
+  ProfileDraft,
+  SwitchRecord,
+  SwitchResult,
+  SwitchScope,
+} from "@/types";
+
+export const api = {
+  // first run
+  isFirstRun: () => invoke<boolean>("is_first_run"),
+  scanLocalGitEnvironment: () =>
+    invoke<EnvScanReport>("scan_local_git_environment"),
+  importAsProfile: (report: EnvScanReport, selections: ProfileDraft[]) =>
+    invoke<Profile[]>("import_as_profile", { report, selections }),
+  markFirstRunCompleted: () => invoke<void>("mark_first_run_completed"),
+
+  // profile
+  listProfiles: () => invoke<Profile[]>("list_profiles"),
+  getProfile: (id: string) => invoke<Profile>("get_profile", { id }),
+  createProfile: (profile: Profile) =>
+    invoke<Profile>("create_profile", { profile }),
+  updateProfile: (id: string, profile: Profile) =>
+    invoke<Profile>("update_profile", { id, profile }),
+  deleteProfile: (id: string) => invoke<void>("delete_profile", { id }),
+  duplicateProfile: (id: string) =>
+    invoke<Profile>("duplicate_profile", { id }),
+  getActiveProfile: () => invoke<Profile | null>("get_active_profile"),
+
+  // switch
+  switchProfile: (id: string, scope: SwitchScope) =>
+    invoke<SwitchResult>("switch_profile", { id, scope }),
+  getCurrentGitConfig: (scope: SwitchScope) =>
+    invoke<GitConfigSnapshot>("get_current_git_config", { scope }),
+
+  // backup / history
+  listBackups: () => invoke<BackupEntry[]>("list_backups"),
+  restoreBackup: (backupId: string) =>
+    invoke<void>("restore_backup", { backupId }),
+  listHistory: (limit?: number) =>
+    invoke<SwitchRecord[]>("list_history", { limit }),
+};
