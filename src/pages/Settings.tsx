@@ -34,7 +34,7 @@ export default function Settings() {
       <section className="rounded-lg border bg-card p-4">
         <h2 className="mb-2 text-sm font-medium">关于</h2>
         <p className="text-xs text-muted-foreground">
-          Git Profile Switcher v0.1.0-alpha — Milestone 1 MVP
+          Git Profile Switcher v0.0.1
         </p>
       </section>
     </div>

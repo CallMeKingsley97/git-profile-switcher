@@ -67,19 +67,29 @@ function render(size) {
   // Geometry (normalized to 1024 then scaled)
   const k = size / 1024;
   const cx = size / 2, cy = size / 2;
-  const bgHalf = size / 2 - 8 * k;
-  const bgRadius = 230 * k;
+  // macOS icon safe area: visible content should occupy ~824/1024 of the canvas,
+  // leaving ~100px transparent padding on each side so the icon visually matches
+  // other apps in the Dock / Launchpad.
+  const bgHalf = 412 * k;
+  const bgRadius = 185 * k;
 
-  const lineW = 56 * k; // capsule "radius" is half of line width
+  // Inner graphic is laid out in the original 1024-design space, then scaled
+  // by `s` to fit inside the new (smaller) background safe area, and recentered.
+  const s = (bgHalf * 2) / 1008; // previous bg occupied 1008px of the canvas
+  const k2 = k * s;
+  const ox = cx - 512 * k2;
+  const oy = cy - 512 * k2;
+
+  const lineW = 56 * k2;
   const lineR = lineW / 2;
-  const nodeR = 78 * k;
-  const innerR = 36 * k;
+  const nodeR = 78 * k2;
+  const innerR = 36 * k2;
 
-  const ax = 360 * k, ay = 280 * k;          // top-left node
-  const bx = 664 * k, by = 280 * k;          // top-right node
-  const mx = 360 * k, my = 744 * k;          // bottom (merge) node
-  const jx = 360 * k, jy = 560 * k;          // junction on main line
-  const elbowR = 120 * k;                    // bend radius for branch
+  const ax = ox + 360 * k2, ay = oy + 280 * k2;
+  const bx = ox + 664 * k2, by = oy + 280 * k2;
+  const mx = ox + 360 * k2, my = oy + 744 * k2;
+  const jx = ox + 360 * k2, jy = oy + 560 * k2;
+  const elbowR = 120 * k2;
 
   for (let y = 0; y < size; y++) {
     for (let x = 0; x < size; x++) {

@@ -1,6 +1,6 @@
 [package]
 name = "git-profile-switcher"
-version = "0.1.0"
+version = "0.0.1"
 description = "Git Profile Switcher"
 authors = ["Kingsley"]
 edition = "2021"

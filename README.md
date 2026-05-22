@@ -1,10 +1,10 @@
-# Git Profile Switcher — v0.1.0-alpha (MVP)
+# Git Profile Switcher
 
 一键切换本机 Git 身份（user.name / user.email / signingkey / SSH key 关联等）的桌面 GUI 工具。
 
-> 当前版本对应方案文档 Milestone 1：Profile CRUD + 全局切换 + 首次启动向导 + 备份/历史。
+> 最新版本与下载请见 [GitHub Releases](../../releases)。
 
-## 功能（v0.1.0-alpha）
+## 功能
 
 - 首次启动向导：扫描本机 `~/.gitconfig` / `~/.ssh/` / `~/.ssh/config` / `gpg --list-secret-keys`，以及常见目录下仓库的 `.git/config`，建议导入为 profile
 - Profile CRUD（名称、图标、user.name、user.email、signingkey、gpgsign、defaultBranch、SSH key 路径）
@@ -48,9 +48,11 @@ npm run tauri:build
 
 ## 数据位置
 
-- macOS：`~/Library/Application Support/com.kingsley.gitprofileswitcher/`
-- Linux：`~/.config/com.kingsley.gitprofileswitcher/`
-- Windows：`%APPDATA%\com.kingsley.gitprofileswitcher\`
+应用数据存放在系统的 app data 目录下，子目录名为 `tauri.conf.json` 中配置的 `identifier`（当前为 `io.github.kingsley.git-profile-switcher`）：
+
+- macOS：`~/Library/Application Support/<identifier>/`
+- Linux：`~/.config/<identifier>/`
+- Windows：`%APPDATA%\<identifier>\`
 
 包含 `profiles.json` / `history.json` / `flags.json` / `backups/`。
 
