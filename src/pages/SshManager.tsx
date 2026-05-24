@@ -101,10 +101,10 @@ export default function SshManager() {
           <Plus className="h-4 w-4 text-primary" />
           <h2 className="font-medium">生成 SSH Key</h2>
         </div>
-        <div className="grid gap-3 md:grid-cols-2">
+        <div className="grid gap-4 md:grid-cols-2">
           <Field label="Key 类型">
             <select
-              className="input"
+              className="input w-full"
               value={form.keyType}
               onChange={(e) =>
                 setForm((current) => ({
@@ -122,7 +122,7 @@ export default function SshManager() {
           </Field>
           <Field label="文件名">
             <input
-              className="input"
+              className="input w-full"
               value={form.fileName}
               onChange={(e) =>
                 setForm((current) => ({ ...current, fileName: e.target.value }))
@@ -132,7 +132,7 @@ export default function SshManager() {
           </Field>
           <Field label="Comment">
             <input
-              className="input"
+              className="input w-full"
               value={form.comment}
               onChange={(e) =>
                 setForm((current) => ({ ...current, comment: e.target.value }))
@@ -142,7 +142,7 @@ export default function SshManager() {
           </Field>
           <Field label="Passphrase（可选）">
             <input
-              className="input"
+              className="input w-full"
               type="password"
               value={form.passphrase}
               onChange={(e) =>

@@ -22,6 +22,9 @@ pub struct ProfilesData {
 pub struct Flags {
     pub first_run_completed: bool,
     pub first_run_completed_at: Option<DateTime<Utc>>,
+    pub global_shortcut_enabled: bool,
+    pub tray_enabled: bool,
+    pub notifications_enabled: bool,
 }
 
 #[derive(Debug)]

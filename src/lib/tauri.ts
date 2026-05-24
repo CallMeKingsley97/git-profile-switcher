@@ -63,6 +63,12 @@ export const api = {
     invoke<SystemIntegrationStatus>("get_system_integration_status"),
   setAutostart: (enabled: boolean) =>
     invoke<SystemIntegrationStatus>("set_autostart", { enabled }),
+  setGlobalShortcut: (enabled: boolean) =>
+    invoke<SystemIntegrationStatus>("set_global_shortcut", { enabled }),
+  setTray: (enabled: boolean) =>
+    invoke<SystemIntegrationStatus>("set_tray", { enabled }),
+  setNotifications: (enabled: boolean) =>
+    invoke<SystemIntegrationStatus>("set_notifications", { enabled }),
   showMainWindow: () => invoke<void>("show_main_window"),
 
   // backup / history

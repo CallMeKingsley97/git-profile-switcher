@@ -125,4 +125,7 @@ export interface BackupEntry {
 
 export interface SystemIntegrationStatus {
   autostartEnabled: boolean;
+  globalShortcutEnabled: boolean;
+  trayEnabled: boolean;
+  notificationsEnabled: boolean;
 }

@@ -4,7 +4,7 @@ mod core;
 use std::sync::Mutex;
 use tauri::menu::{MenuBuilder, MenuItemBuilder};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
-use tauri::Manager;
+use tauri::{AppHandle, Manager, Resource};
 use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut};
 
 use crate::core::store::Store;
@@ -32,11 +32,17 @@ pub fn run() {
             std::fs::create_dir_all(&config_dir).ok();
 
             let store = Store::load_or_init(&config_dir)?;
+            let tray_enabled = store.flags.tray_enabled;
+            let global_shortcut_enabled = store.flags.global_shortcut_enabled;
             app.manage(AppState {
                 store: Mutex::new(store),
             });
-            setup_tray(app)?;
-            setup_global_shortcut(app)?;
+            if tray_enabled {
+                setup_tray(app.handle())?;
+            }
+            if global_shortcut_enabled {
+                setup_global_shortcut(app.handle())?;
+            }
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -61,16 +67,30 @@ pub fn run() {
             commands::ssh::test_ssh_connection,
             commands::system::get_system_integration_status,
             commands::system::set_autostart,
+            commands::system::set_global_shortcut,
+            commands::system::set_tray,
+            commands::system::set_notifications,
             commands::system::show_main_window,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
 
-fn setup_tray(app: &mut tauri::App) -> tauri::Result<()> {
-    let show = MenuItemBuilder::with_id("show", "显示窗口").build(app)?;
-    let quit = MenuItemBuilder::with_id("quit", "退出").build(app)?;
-    let menu = MenuBuilder::new(app).items(&[&show, &quit]).build()?;
+pub fn sync_tray(app: &AppHandle, enabled: bool) -> tauri::Result<()> {
+    if enabled {
+        if app.tray_by_id("main").is_none() {
+            setup_tray(app)?;
+        }
+    } else if let Some(tray) = app.tray_by_id("main") {
+        Resource::close(tray.into());
+    }
+    Ok(())
+}
+
+fn setup_tray(manager: &AppHandle) -> tauri::Result<()> {
+    let show = MenuItemBuilder::with_id("show", "显示窗口").build(manager)?;
+    let quit = MenuItemBuilder::with_id("quit", "退出").build(manager)?;
+    let menu = MenuBuilder::new(manager).items(&[&show, &quit]).build()?;
 
     TrayIconBuilder::with_id("main")
         .menu(&menu)
@@ -92,11 +112,25 @@ fn setup_tray(app: &mut tauri::App) -> tauri::Result<()> {
                 let _ = crate::commands::system::show_main_window(tray.app_handle().clone());
             }
         })
-        .build(app)?;
+        .build(manager)?;
     Ok(())
 }
 
-fn setup_global_shortcut(app: &mut tauri::App) -> tauri::Result<()> {
+pub fn sync_global_shortcut(app: &AppHandle, enabled: bool) -> tauri::Result<()> {
+    let shortcut = Shortcut::new(Some(Modifiers::SUPER | Modifiers::SHIFT), Code::KeyG);
+    if enabled {
+        app.global_shortcut()
+            .register(shortcut)
+            .map_err(|e| tauri::Error::Anyhow(anyhow::anyhow!(e.to_string())))?;
+    } else {
+        app.global_shortcut()
+            .unregister(shortcut)
+            .map_err(|e| tauri::Error::Anyhow(anyhow::anyhow!(e.to_string())))?;
+    }
+    Ok(())
+}
+
+fn setup_global_shortcut(app: &AppHandle) -> tauri::Result<()> {
     let shortcut = Shortcut::new(Some(Modifiers::SUPER | Modifiers::SHIFT), Code::KeyG);
     app.global_shortcut()
         .on_shortcut(shortcut, |app, _shortcut, event| {
@@ -105,5 +139,6 @@ fn setup_global_shortcut(app: &mut tauri::App) -> tauri::Result<()> {
             }
         })
         .map_err(|e| tauri::Error::Anyhow(anyhow::anyhow!(e.to_string())))?;
+    sync_global_shortcut(app, true)?;
     Ok(())
 }
