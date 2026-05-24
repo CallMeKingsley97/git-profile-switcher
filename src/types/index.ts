@@ -48,6 +48,14 @@ export interface SshKeyInfo {
   comment?: string;
 }
 
+export interface SshTestResult {
+  host: string;
+  success: boolean;
+  message: string;
+}
+
+export type SshKeyType = "ed25519" | "rsa" | "ecdsa";
+
 export interface SshHostEntry {
   host: string;
   hostName?: string;
@@ -113,4 +121,8 @@ export interface BackupEntry {
   kind: string;
   path: string;
   createdAt: string;
+}
+
+export interface SystemIntegrationStatus {
+  autostartEnabled: boolean;
 }

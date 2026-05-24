@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use tauri::State;
+use tauri::{AppHandle, State};
 
 use crate::core::error::{AppError, AppResult};
 use crate::core::git_config::{self, ConfigScope, GitConfigSnapshot};
@@ -12,6 +12,7 @@ const MAX_BACKUPS: usize = 20;
 
 #[tauri::command]
 pub fn switch_profile(
+    app: AppHandle,
     state: State<'_, AppState>,
     id: String,
     scope: SwitchScope,
@@ -42,6 +43,7 @@ pub fn switch_profile(
             store.push_history(record, MAX_HISTORY);
             let _ = crate::core::backup::prune(&store.backups_dir(), MAX_BACKUPS);
             store.save()?;
+            crate::commands::system::notify_switch_success(&app, &profile.name);
             Ok(SwitchResult {
                 profile_id: id,
                 scope: match scope {

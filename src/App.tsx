@@ -7,6 +7,7 @@ import ProfileEditor from "@/pages/ProfileEditor";
 import FirstRunWizard from "@/pages/FirstRunWizard";
 import History from "@/pages/History";
 import Settings from "@/pages/Settings";
+import SshManager from "@/pages/SshManager";
 import { api } from "@/lib/tauri";
 import { useProfileStore } from "@/store/profileStore";
 
@@ -58,6 +59,7 @@ export default function App() {
           <Route path="/profiles/:id" element={<ProfileEditor />} />
           <Route path="/first-run" element={<FirstRunWizard />} />
           <Route path="/history" element={<History />} />
+          <Route path="/ssh" element={<SshManager />} />
           <Route path="/settings" element={<Settings />} />
         </Routes>
       </main>

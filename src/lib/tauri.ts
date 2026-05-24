@@ -5,9 +5,13 @@ import type {
   GitConfigSnapshot,
   Profile,
   ProfileDraft,
+  SshKeyInfo,
+  SshKeyType,
+  SshTestResult,
   SwitchRecord,
   SwitchResult,
   SwitchScope,
+  SystemIntegrationStatus,
 } from "@/types";
 
 export const api = {
@@ -36,6 +40,30 @@ export const api = {
     invoke<SwitchResult>("switch_profile", { id, scope }),
   getCurrentGitConfig: (scope: SwitchScope) =>
     invoke<GitConfigSnapshot>("get_current_git_config", { scope }),
+
+  // ssh
+  listSshKeys: () => invoke<SshKeyInfo[]>("list_ssh_keys"),
+  generateSshKey: (
+    keyType: SshKeyType,
+    fileName: string,
+    comment: string,
+    passphrase?: string,
+  ) =>
+    invoke<SshKeyInfo>("generate_ssh_key", {
+      keyType,
+      fileName,
+      comment,
+      passphrase,
+    }),
+  testSshConnection: (host: string) =>
+    invoke<SshTestResult>("test_ssh_connection", { host }),
+
+  // system integration
+  getSystemIntegrationStatus: () =>
+    invoke<SystemIntegrationStatus>("get_system_integration_status"),
+  setAutostart: (enabled: boolean) =>
+    invoke<SystemIntegrationStatus>("set_autostart", { enabled }),
+  showMainWindow: () => invoke<void>("show_main_window"),
 
   // backup / history
   listBackups: () => invoke<BackupEntry[]>("list_backups"),

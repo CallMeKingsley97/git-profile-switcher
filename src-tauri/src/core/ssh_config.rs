@@ -26,6 +26,9 @@ pub struct SshHostEntry {
     pub port: Option<u16>,
 }
 
+const MANAGED_START: &str = "# >>> managed by git-profile-switcher >>>";
+const MANAGED_END: &str = "# <<< managed by git-profile-switcher <<<";
+
 pub fn ssh_dir() -> Option<PathBuf> {
     dirs::home_dir().map(|h| h.join(".ssh"))
 }
@@ -114,30 +117,20 @@ pub fn update_host_config(cfg: &SshConfig) -> AppResult<bool> {
     }
 
     let content = std::fs::read_to_string(&path).unwrap_or_default();
-    let mut blocks: Vec<String> = vec![];
-    let mut current: Vec<String> = vec![];
-    let mut replaced = false;
+    let managed_block = render_managed_host_block(cfg, host, real_host);
+    let next = if let Some((start, end)) = find_managed_block(&content) {
+        format!(
+            "{}{}{}",
+            &content[..start],
+            managed_block,
+            &content[end..]
+        )
+    } else if content.trim().is_empty() {
+        format!("{managed_block}\n")
+    } else {
+        format!("{}\n{managed_block}\n", content.trim_end())
+    };
 
-    for line in content.lines() {
-        if line.trim_start().to_lowercase().starts_with("host ") {
-            if !current.is_empty() {
-                blocks.push(render_or_keep_block(&current, cfg, host, real_host, &mut replaced));
-                current.clear();
-            }
-        }
-        current.push(line.to_string());
-    }
-    if !current.is_empty() {
-        blocks.push(render_or_keep_block(&current, cfg, host, real_host, &mut replaced));
-    }
-    if !replaced {
-        blocks.push(render_host_block(cfg, host, real_host));
-    }
-
-    let mut next = blocks.join("\n");
-    if !next.ends_with('\n') {
-        next.push('\n');
-    }
     if next != content {
         std::fs::write(path, next)?;
         return Ok(true);
@@ -145,30 +138,22 @@ pub fn update_host_config(cfg: &SshConfig) -> AppResult<bool> {
     Ok(false)
 }
 
-fn render_or_keep_block(
-    block: &[String],
-    cfg: &SshConfig,
-    host: &str,
-    real_host: &str,
-    replaced: &mut bool,
-) -> String {
-    if block_matches_host(block, host) {
-        *replaced = true;
-        render_host_block(cfg, host, real_host)
-    } else {
-        block.join("\n")
+fn find_managed_block(content: &str) -> Option<(usize, usize)> {
+    let start = content.find(MANAGED_START)?;
+    let rest = &content[start..];
+    let end_relative = rest.find(MANAGED_END)? + MANAGED_END.len();
+    let mut end = start + end_relative;
+    if content[end..].starts_with('\n') {
+        end += 1;
     }
+    Some((start, end))
 }
 
-fn block_matches_host(block: &[String], host: &str) -> bool {
-    let Some(first) = block.first() else {
-        return false;
-    };
-    let trimmed = first.trim();
-    if !trimmed.to_lowercase().starts_with("host ") {
-        return false;
-    }
-    trimmed[4..].split_whitespace().any(|candidate| candidate == host)
+fn render_managed_host_block(cfg: &SshConfig, host: &str, real_host: &str) -> String {
+    format!(
+        "{MANAGED_START}\n{}\n{MANAGED_END}",
+        render_host_block(cfg, host, real_host)
+    )
 }
 
 fn render_host_block(cfg: &SshConfig, host: &str, real_host: &str) -> String {

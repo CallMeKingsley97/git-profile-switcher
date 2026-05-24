@@ -2,7 +2,10 @@ mod commands;
 mod core;
 
 use std::sync::Mutex;
+use tauri::menu::{MenuBuilder, MenuItemBuilder};
+use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::Manager;
+use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut};
 
 use crate::core::store::Store;
 
@@ -15,6 +18,12 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_notification::init())
+        .plugin(tauri_plugin_autostart::init(
+            tauri_plugin_autostart::MacosLauncher::LaunchAgent,
+            None,
+        ))
+        .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .setup(|app| {
             let config_dir = app
                 .path()
@@ -26,6 +35,8 @@ pub fn run() {
             app.manage(AppState {
                 store: Mutex::new(store),
             });
+            setup_tray(app)?;
+            setup_global_shortcut(app)?;
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -45,7 +56,54 @@ pub fn run() {
             commands::backup::list_backups,
             commands::backup::restore_backup,
             commands::history::list_history,
+            commands::ssh::list_ssh_keys,
+            commands::ssh::generate_ssh_key,
+            commands::ssh::test_ssh_connection,
+            commands::system::get_system_integration_status,
+            commands::system::set_autostart,
+            commands::system::show_main_window,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+fn setup_tray(app: &mut tauri::App) -> tauri::Result<()> {
+    let show = MenuItemBuilder::with_id("show", "显示窗口").build(app)?;
+    let quit = MenuItemBuilder::with_id("quit", "退出").build(app)?;
+    let menu = MenuBuilder::new(app).items(&[&show, &quit]).build()?;
+
+    TrayIconBuilder::with_id("main")
+        .menu(&menu)
+        .show_menu_on_left_click(false)
+        .on_menu_event(|app, event| match event.id.as_ref() {
+            "show" => {
+                let _ = crate::commands::system::show_main_window(app.clone());
+            }
+            "quit" => app.exit(0),
+            _ => {}
+        })
+        .on_tray_icon_event(|tray, event| {
+            if let TrayIconEvent::Click {
+                button: MouseButton::Left,
+                button_state: MouseButtonState::Up,
+                ..
+            } = event
+            {
+                let _ = crate::commands::system::show_main_window(tray.app_handle().clone());
+            }
+        })
+        .build(app)?;
+    Ok(())
+}
+
+fn setup_global_shortcut(app: &mut tauri::App) -> tauri::Result<()> {
+    let shortcut = Shortcut::new(Some(Modifiers::SUPER | Modifiers::SHIFT), Code::KeyG);
+    app.global_shortcut()
+        .on_shortcut(shortcut, |app, _shortcut, event| {
+            if event.state == tauri_plugin_global_shortcut::ShortcutState::Pressed {
+                let _ = crate::commands::system::show_main_window(app.clone());
+            }
+        })
+        .map_err(|e| tauri::Error::Anyhow(anyhow::anyhow!(e.to_string())))?;
+    Ok(())
 }

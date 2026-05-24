@@ -5,12 +5,14 @@ import {
   History as HistoryIcon,
   Settings as SettingsIcon,
   GitBranch,
+  KeyRound,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const links = [
   { to: "/", label: "仪表盘", icon: LayoutDashboard, end: true },
   { to: "/profiles", label: "Profiles", icon: Users },
+  { to: "/ssh", label: "SSH Keys", icon: KeyRound },
   { to: "/history", label: "历史", icon: HistoryIcon },
   { to: "/settings", label: "设置", icon: SettingsIcon },
 ];
