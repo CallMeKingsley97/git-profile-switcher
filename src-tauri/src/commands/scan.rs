@@ -23,25 +23,46 @@ pub fn import_as_profile(
     selections: Vec<ProfileDraft>,
 ) -> AppResult<Vec<Profile>> {
     let mut store = state.store.lock().unwrap();
-    let mut created: Vec<Profile> = vec![];
+    let mut affected: Vec<Profile> = vec![];
     let mut active_id: Option<String> = None;
 
     for draft in selections {
         let merged = merge_identity(&draft.git, &report);
-        let mut p = Profile::new(draft.name, merged);
-        if let Some(path) = draft.ssh_key_path {
-            if !path.is_empty() {
+        let ssh_key_path = draft
+            .ssh_key_path
+            .as_deref()
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
+            .map(str::to_string);
+
+        let existing_idx = store.data.profiles.iter().position(|p| {
+            p.git.user_email.eq_ignore_ascii_case(&merged.user_email)
+                && profile_ssh_path(p) == ssh_key_path.as_deref()
+        });
+
+        let id = if let Some(idx) = existing_idx {
+            let p = &mut store.data.profiles[idx];
+            fill_missing_fields(p, &merged, ssh_key_path.as_deref());
+            p.updated_at = chrono::Utc::now();
+            affected.push(p.clone());
+            p.id.clone()
+        } else {
+            let mut p = Profile::new(draft.name, merged);
+            if let Some(path) = ssh_key_path {
                 p.ssh = Some(SshConfig {
                     key_path: path,
                     ..Default::default()
                 });
             }
-        }
+            let new_id = p.id.clone();
+            affected.push(p.clone());
+            store.data.profiles.push(p);
+            new_id
+        };
+
         if draft.make_active {
-            active_id = Some(p.id.clone());
+            active_id = Some(id);
         }
-        created.push(p.clone());
-        store.data.profiles.push(p);
     }
 
     if let Some(id) = active_id {
@@ -51,7 +72,41 @@ pub fn import_as_profile(
     store.flags.first_run_completed = true;
     store.flags.first_run_completed_at = Some(chrono::Utc::now());
     store.save()?;
-    Ok(created)
+    Ok(affected)
+}
+
+fn profile_ssh_path(p: &Profile) -> Option<&str> {
+    p.ssh
+        .as_ref()
+        .map(|s| s.key_path.as_str())
+        .filter(|s| !s.is_empty())
+}
+
+fn fill_missing_fields(p: &mut Profile, src: &GitIdentity, ssh_key_path: Option<&str>) {
+    if p.git.user_name.is_empty() && !src.user_name.is_empty() {
+        p.git.user_name = src.user_name.clone();
+    }
+    if p.git.signing_key.is_none() {
+        p.git.signing_key = src.signing_key.clone();
+    }
+    if p.git.gpg_sign.is_none() {
+        p.git.gpg_sign = src.gpg_sign;
+    }
+    if p.git.default_branch.is_none() {
+        p.git.default_branch = src.default_branch.clone();
+    }
+    if let Some(path) = ssh_key_path {
+        match &mut p.ssh {
+            Some(cfg) if cfg.key_path.is_empty() => cfg.key_path = path.to_string(),
+            None => {
+                p.ssh = Some(SshConfig {
+                    key_path: path.to_string(),
+                    ..Default::default()
+                });
+            }
+            _ => {}
+        }
+    }
 }
 
 #[tauri::command]

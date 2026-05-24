@@ -93,6 +93,7 @@ export interface SwitchResult {
   profileId: string;
   scope: string;
   backupId?: string;
+  sshBackupId?: string;
   appliedKeys: string[];
 }
 

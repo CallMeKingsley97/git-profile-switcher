@@ -20,11 +20,13 @@ pub struct SwitchResult {
     pub profile_id: String,
     pub scope: String,
     pub backup_id: Option<String>,
+    pub ssh_backup_id: Option<String>,
     pub applied_keys: Vec<String>,
 }
 
 pub struct ApplyOutcome {
     pub backup_id: Option<String>,
+    pub ssh_backup_id: Option<String>,
     pub applied_keys: Vec<String>,
 }
 
@@ -49,6 +51,18 @@ pub fn apply_profile(
     };
 
     let mut applied: Vec<String> = vec![];
+    let mut ssh_backup_id = None;
+
+    if matches!(scope, SwitchScope::Global) {
+        if let Some(ssh) = profile.ssh.as_ref() {
+            if !ssh.key_path.trim().is_empty() {
+                ssh_backup_id = super::backup::backup_ssh_config(backups_dir)?.map(|b| b.id);
+                if super::ssh_config::update_host_config(ssh)? {
+                    applied.push("ssh.config".into());
+                }
+            }
+        }
+    }
 
     git_config::set_config(cfg_scope, "user.name", &profile.git.user_name)?;
     applied.push("user.name".into());
@@ -92,6 +106,7 @@ pub fn apply_profile(
 
     Ok(ApplyOutcome {
         backup_id,
+        ssh_backup_id,
         applied_keys: applied,
     })
 }

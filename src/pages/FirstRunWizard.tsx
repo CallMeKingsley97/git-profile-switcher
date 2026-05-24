@@ -284,7 +284,32 @@ function buildDrafts(report: EnvScanReport): DraftRow[] {
   const out: DraftRow[] = [];
 
   const g = report.globalGitConfig;
-  if (g.userName || g.userEmail) {
+  const defaultKeyPath = pickDefaultSshKey(report);
+  const seenEmails = new Set<string>();
+
+  report.sshKeys.forEach((k) => {
+    const email = extractEmail(k.comment) ?? g.userEmail ?? "";
+    const isDefault = k.privatePath === defaultKeyPath;
+    out.push({
+      enabled: true,
+      makeActive: isDefault,
+      source: isDefault
+        ? `Current（${k.name}${email ? `，${email}` : ""}）`
+        : `SSH key ${k.name}${email ? `（${email}）` : ""}`,
+      name: suggestNameFromKey(k),
+      git: {
+        userName: g.userName ?? "",
+        userEmail: email,
+        signingKey: isDefault ? g.signingKey : undefined,
+        gpgSign: isDefault ? g.gpgSign : undefined,
+        defaultBranch: isDefault ? g.defaultBranch : undefined,
+      },
+      sshKeyPath: k.privatePath,
+    });
+    if (email) seenEmails.add(email);
+  });
+
+  if (out.length === 0 && (g.userName || g.userEmail)) {
     out.push({
       enabled: true,
       makeActive: true,
@@ -297,34 +322,9 @@ function buildDrafts(report: EnvScanReport): DraftRow[] {
         gpgSign: g.gpgSign,
         defaultBranch: g.defaultBranch,
       },
-      sshKeyPath: pickDefaultSshKey(report),
     });
+    if (g.userEmail) seenEmails.add(g.userEmail);
   }
-
-  const seenEmails = new Set<string>();
-  if (g.userEmail) seenEmails.add(g.userEmail);
-  const usedKeyPaths = new Set<string>();
-  const current = out[0];
-  if (current?.sshKeyPath) usedKeyPaths.add(current.sshKeyPath);
-
-  report.sshKeys.forEach((k) => {
-    if (usedKeyPaths.has(k.privatePath)) return;
-    const email = extractEmail(k.comment);
-    const name = suggestNameFromKey(k);
-    out.push({
-      enabled: true,
-      makeActive: false,
-      source: `SSH key ${k.name}${email ? `（${email}）` : ""}`,
-      name,
-      git: {
-        userName: g.userName ?? "",
-        userEmail: email ?? "",
-      },
-      sshKeyPath: k.privatePath,
-    });
-    usedKeyPaths.add(k.privatePath);
-    if (email) seenEmails.add(email);
-  });
 
   report.discoveredIdentities.forEach((d: DiscoveredIdentity, i) => {
     const email = d.userEmail ?? "";

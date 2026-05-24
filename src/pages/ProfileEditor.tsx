@@ -57,7 +57,14 @@ export default function ProfileEditor() {
     try {
       const payload: Profile = {
         ...form,
-        ssh: form.ssh && form.ssh.keyPath ? form.ssh : undefined,
+        ssh:
+          form.ssh && form.ssh.keyPath
+            ? {
+                ...form.ssh,
+                hostAlias: form.ssh.hostAlias || undefined,
+                realHost: form.ssh.realHost || undefined,
+              }
+            : undefined,
       };
       if (isEdit && id) {
         await update(id, payload);
@@ -158,6 +165,35 @@ export default function ProfileEditor() {
               value={form.ssh?.keyPath ?? ""}
               onChange={(e) => setSsh("keyPath", e.target.value)}
               placeholder="~/.ssh/id_ed25519_work"
+            />
+          </Field>
+          <Field label="Host 别名">
+            <input
+              className="input"
+              value={form.ssh?.hostAlias ?? ""}
+              onChange={(e) => setSsh("hostAlias", e.target.value)}
+              placeholder="github.com"
+            />
+          </Field>
+          <Field label="真实 HostName">
+            <input
+              className="input"
+              value={form.ssh?.realHost ?? ""}
+              onChange={(e) => setSsh("realHost", e.target.value)}
+              placeholder="github.com"
+            />
+          </Field>
+          <Field label="端口">
+            <input
+              className="input"
+              type="number"
+              min="1"
+              max="65535"
+              value={form.ssh?.port ?? ""}
+              onChange={(e) =>
+                setSsh("port", e.target.value ? Number(e.target.value) : undefined)
+              }
+              placeholder="22"
             />
           </Field>
         </Section>

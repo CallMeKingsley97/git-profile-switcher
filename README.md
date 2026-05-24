@@ -9,10 +9,12 @@
 - 首次启动向导：扫描本机 `~/.gitconfig` / `~/.ssh/` / `~/.ssh/config` / `gpg --list-secret-keys`，以及常见目录下仓库的 `.git/config`，建议导入为 profile
 - Profile CRUD（名称、图标、user.name、user.email、signingkey、gpgsign、defaultBranch、SSH key 路径）
 - 全局切换（写入 `git config --global`），切换前自动备份 `~/.gitconfig`
-- 仪表盘：当前 `git config` 快照 + 快速切换 + 最近活动
+- 仓库级切换（写入指定仓库的 `.git/config`）
+- SSH config 改写（按 profile 的 SSH key 更新 `~/.ssh/config`，切换前自动备份）
+- 仪表盘：当前 `git config` 快照 + 快速切换 + 仓库级切换 + 最近活动
 - 历史：切换记录与备份恢复
 
-> 尚未实现：仓库级切换、SSH config 改写、GPG key 生成、系统托盘、全局快捷键、i18n、主题切换。
+> 尚未实现：GPG key 生成、系统托盘、全局快捷键、i18n、主题切换。
 
 ## 环境依赖
 
@@ -78,4 +80,3 @@ git-profile-switcher/
 
 - 占位图标为 1x1 简化 PNG，正式打包前需替换 `src-tauri/icons/`
 - `Cargo.lock` 未提交（首次 build 自动生成）
-- 切换 SSH key 当前仅记录到 profile，尚未自动改写 `~/.ssh/config`（Milestone 2）

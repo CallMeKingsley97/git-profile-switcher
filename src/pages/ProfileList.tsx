@@ -31,7 +31,7 @@ export default function ProfileList() {
           </Link>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-lg border">
+        <div className="overflow-x-auto rounded-lg border">
           <table className="w-full text-sm">
             <thead className="bg-muted/50 text-left text-xs uppercase text-muted-foreground">
               <tr>
@@ -39,14 +39,14 @@ export default function ProfileList() {
                 <th className="px-4 py-2">user.name</th>
                 <th className="px-4 py-2">user.email</th>
                 <th className="px-4 py-2">SSH key</th>
-                <th className="px-4 py-2">最近使用</th>
-                <th className="px-4 py-2 text-right">操作</th>
+                <th className="px-4 py-2 whitespace-nowrap">最近使用</th>
+                <th className="sticky right-0 bg-muted/50 px-4 py-2 text-right">操作</th>
               </tr>
             </thead>
             <tbody>
               {profiles.map((p) => (
                 <tr key={p.id} className="border-t">
-                  <td className="px-4 py-2 font-medium">
+                  <td className="px-4 py-2 font-medium whitespace-nowrap">
                     {activeProfile?.id === p.id && (
                       <span className="mr-1 text-emerald-600">●</span>
                     )}
@@ -59,13 +59,16 @@ export default function ProfileList() {
                   <td className="px-4 py-2 font-mono text-xs">
                     {p.git.userEmail}
                   </td>
-                  <td className="px-4 py-2 font-mono text-xs">
+                  <td
+                    className="max-w-[220px] truncate px-4 py-2 font-mono text-xs"
+                    title={p.ssh?.keyPath ?? ""}
+                  >
                     {p.ssh?.keyPath ?? "—"}
                   </td>
-                  <td className="px-4 py-2 text-xs text-muted-foreground">
+                  <td className="px-4 py-2 text-xs text-muted-foreground whitespace-nowrap">
                     {formatDateTime(p.lastUsedAt)}
                   </td>
-                  <td className="px-4 py-2">
+                  <td className="sticky right-0 bg-background px-4 py-2">
                     <div className="flex justify-end gap-1">
                       <Link
                         to={`/profiles/${p.id}`}

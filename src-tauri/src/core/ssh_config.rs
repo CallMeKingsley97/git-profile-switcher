@@ -2,7 +2,8 @@ use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 
-use super::error::AppResult;
+use super::error::{AppError, AppResult};
+use super::profile::SshConfig;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -89,6 +90,99 @@ pub fn enumerate_keys() -> AppResult<Vec<SshKeyInfo>> {
     }
     keys.sort_by(|a, b| a.name.cmp(&b.name));
     Ok(keys)
+}
+
+pub fn update_host_config(cfg: &SshConfig) -> AppResult<bool> {
+    let Some(path) = ssh_config_path() else {
+        return Err(AppError::Other("no home dir".into()));
+    };
+    let key_path = cfg.key_path.trim();
+    if key_path.is_empty() {
+        return Ok(false);
+    }
+    let host = cfg.host_alias.as_deref().unwrap_or("github.com").trim();
+    if host.is_empty() || host.contains(char::is_whitespace) {
+        return Err(AppError::InvalidArgument("invalid SSH host alias".into()));
+    }
+    let real_host = cfg.real_host.as_deref().unwrap_or("github.com").trim();
+    if real_host.is_empty() || real_host.contains(char::is_whitespace) {
+        return Err(AppError::InvalidArgument("invalid SSH host name".into()));
+    }
+
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
+
+    let content = std::fs::read_to_string(&path).unwrap_or_default();
+    let mut blocks: Vec<String> = vec![];
+    let mut current: Vec<String> = vec![];
+    let mut replaced = false;
+
+    for line in content.lines() {
+        if line.trim_start().to_lowercase().starts_with("host ") {
+            if !current.is_empty() {
+                blocks.push(render_or_keep_block(&current, cfg, host, real_host, &mut replaced));
+                current.clear();
+            }
+        }
+        current.push(line.to_string());
+    }
+    if !current.is_empty() {
+        blocks.push(render_or_keep_block(&current, cfg, host, real_host, &mut replaced));
+    }
+    if !replaced {
+        blocks.push(render_host_block(cfg, host, real_host));
+    }
+
+    let mut next = blocks.join("\n");
+    if !next.ends_with('\n') {
+        next.push('\n');
+    }
+    if next != content {
+        std::fs::write(path, next)?;
+        return Ok(true);
+    }
+    Ok(false)
+}
+
+fn render_or_keep_block(
+    block: &[String],
+    cfg: &SshConfig,
+    host: &str,
+    real_host: &str,
+    replaced: &mut bool,
+) -> String {
+    if block_matches_host(block, host) {
+        *replaced = true;
+        render_host_block(cfg, host, real_host)
+    } else {
+        block.join("\n")
+    }
+}
+
+fn block_matches_host(block: &[String], host: &str) -> bool {
+    let Some(first) = block.first() else {
+        return false;
+    };
+    let trimmed = first.trim();
+    if !trimmed.to_lowercase().starts_with("host ") {
+        return false;
+    }
+    trimmed[4..].split_whitespace().any(|candidate| candidate == host)
+}
+
+fn render_host_block(cfg: &SshConfig, host: &str, real_host: &str) -> String {
+    let mut lines = vec![
+        format!("Host {host}"),
+        format!("  HostName {real_host}"),
+        "  User git".to_string(),
+        format!("  IdentityFile {}", cfg.key_path.trim()),
+        "  IdentitiesOnly yes".to_string(),
+    ];
+    if let Some(port) = cfg.port {
+        lines.push(format!("  Port {port}"));
+    }
+    lines.join("\n")
 }
 
 pub fn parse_ssh_config(path: &Path) -> AppResult<Vec<SshHostEntry>> {

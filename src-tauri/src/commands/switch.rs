@@ -49,6 +49,7 @@ pub fn switch_profile(
                     SwitchScope::Local { .. } => "local".into(),
                 },
                 backup_id: outcome.backup_id,
+                ssh_backup_id: outcome.ssh_backup_id,
                 applied_keys: outcome.applied_keys,
             })
         }

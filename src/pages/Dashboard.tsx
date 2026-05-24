@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { open } from "@tauri-apps/plugin-dialog";
 import { Link } from "react-router-dom";
 import { CheckCircle2, AlertCircle, RefreshCw } from "lucide-react";
 import { api } from "@/lib/tauri";
@@ -11,6 +12,8 @@ export default function Dashboard() {
   const [snapshot, setSnapshot] = useState<GitConfigSnapshot | null>(null);
   const [history, setHistory] = useState<SwitchRecord[]>([]);
   const [switching, setSwitching] = useState<string | null>(null);
+  const [localPath, setLocalPath] = useState("");
+  const [localSwitching, setLocalSwitching] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const load = async () => {
@@ -41,6 +44,28 @@ export default function Dashboard() {
       setError(String(e?.message ?? e));
     } finally {
       setSwitching(null);
+    }
+  };
+
+  const handlePickDirectory = async () => {
+    const selected = await open({ directory: true, multiple: false });
+    if (typeof selected === "string") setLocalPath(selected);
+  };
+
+  const handleLocalSwitch = async (id: string) => {
+    if (!localPath.trim()) {
+      setError("请先选择仓库目录。");
+      return;
+    }
+    setLocalSwitching(id);
+    setError(null);
+    try {
+      await api.switchProfile(id, { type: "Local", path: localPath.trim() });
+      await load();
+    } catch (e: any) {
+      setError(String(e?.message ?? e));
+    } finally {
+      setLocalSwitching(null);
     }
   };
 
@@ -153,6 +178,54 @@ export default function Dashboard() {
       </section>
 
       <section>
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-sm font-medium text-muted-foreground">
+            仓库级切换
+          </h2>
+          <button
+            onClick={handlePickDirectory}
+            className="text-xs text-primary hover:underline"
+          >
+            选择目录
+          </button>
+        </div>
+        <div className="rounded-lg border bg-card p-4">
+          <div className="flex gap-2">
+            <input
+              className="input flex-1"
+              value={localPath}
+              onChange={(e) => setLocalPath(e.target.value)}
+              placeholder="选择或输入 Git 仓库目录"
+            />
+            <button
+              onClick={handlePickDirectory}
+              className="rounded-md border px-3 py-1.5 text-xs hover:bg-accent"
+            >
+              浏览
+            </button>
+          </div>
+          <div className="mt-3 grid grid-cols-2 gap-2 md:grid-cols-3">
+            {profiles.map((p) => (
+              <button
+                key={p.id}
+                disabled={!localPath.trim() || localSwitching === p.id}
+                onClick={() => handleLocalSwitch(p.id)}
+                className="rounded-md border px-3 py-2 text-left text-xs hover:bg-accent disabled:opacity-50"
+              >
+                <span className="block font-medium">
+                  {p.icon ? `${p.icon} ` : ""}
+                  {p.name}
+                </span>
+                <span className="block truncate text-muted-foreground">
+                  {localSwitching === p.id ? "切换中…" : p.git.userEmail}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section>
         <h2 className="mb-3 text-sm font-medium text-muted-foreground">
           最近活动
         </h2>
@@ -177,6 +250,19 @@ export default function Dashboard() {
           </ul>
         )}
       </section>
+
+      <style>{`
+        .input {
+          width: 100%;
+          border-radius: 0.375rem;
+          border: 1px solid hsl(var(--border));
+          background: hsl(var(--background));
+          padding: 0.4rem 0.6rem;
+          font-size: 0.8rem;
+          outline: none;
+        }
+        .input:focus { border-color: hsl(var(--primary)); }
+      `}</style>
     </div>
   );
 }

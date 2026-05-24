@@ -4,7 +4,7 @@ use chrono::Utc;
 use serde::{Deserialize, Serialize};
 
 use super::error::{AppError, AppResult};
-use super::git_config::{self, gitconfig_path};
+use super::git_config::gitconfig_path;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -30,6 +30,26 @@ pub fn backup_gitconfig(backups_dir: &Path) -> AppResult<Option<BackupEntry>> {
     Ok(Some(BackupEntry {
         id,
         kind: "gitconfig".into(),
+        path: dest.to_string_lossy().to_string(),
+        created_at: Utc::now(),
+    }))
+}
+
+pub fn backup_ssh_config(backups_dir: &Path) -> AppResult<Option<BackupEntry>> {
+    let Some(src) = super::ssh_config::ssh_config_path() else {
+        return Ok(None);
+    };
+    if !src.exists() {
+        return Ok(None);
+    }
+    std::fs::create_dir_all(backups_dir)?;
+    let ts = Utc::now().format("%Y%m%d-%H%M%S").to_string();
+    let id = format!("ssh-config-{ts}");
+    let dest = backups_dir.join(format!("{id}.bak"));
+    std::fs::copy(&src, &dest)?;
+    Ok(Some(BackupEntry {
+        id,
+        kind: "ssh-config".into(),
         path: dest.to_string_lossy().to_string(),
         created_at: Utc::now(),
     }))
