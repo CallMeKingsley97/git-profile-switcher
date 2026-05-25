@@ -43,6 +43,7 @@ pub fn switch_profile(
             store.push_history(record, MAX_HISTORY);
             let _ = crate::core::backup::prune(&store.backups_dir(), MAX_BACKUPS);
             store.save()?;
+            drop(store);
             crate::commands::system::notify_switch_success(&app, &profile.name);
             Ok(SwitchResult {
                 profile_id: id,
