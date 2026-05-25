@@ -83,13 +83,13 @@ export default function SshManager() {
     }
   };
 
-  const handleTest = async (host: string, keyName: string) => {
-    const id = `${keyName}:${host}`;
+  const handleTest = async (host: string, key: SshKeyInfo) => {
+    const id = `${key.name}:${host}`;
     setTesting(id);
     setTestResult(null);
     setError(null);
     try {
-      setTestResult(await api.testSshConnection(host));
+      setTestResult(await api.testSshConnection(host, key.privatePath));
     } catch (e: any) {
       setError(String(e?.message ?? e));
     } finally {
@@ -356,13 +356,13 @@ export default function SshManager() {
                           label="GitHub"
                           host="git@github.com"
                           loading={testing === `${key.name}:git@github.com`}
-                          onClick={() => handleTest("git@github.com", key.name)}
+                          onClick={() => handleTest("git@github.com", key)}
                         />
                         <TestHostButton
                           label="Gitee"
                           host="git@gitee.com"
                           loading={testing === `${key.name}:git@gitee.com`}
-                          onClick={() => handleTest("git@gitee.com", key.name)}
+                          onClick={() => handleTest("git@gitee.com", key)}
                         />
                       </div>
                       {key.publicPath && (
@@ -446,6 +446,9 @@ export default function SshManager() {
                 <div className="text-sm font-semibold">
                   SSH 测试 · {testResult.host}
                 </div>
+                <div className="mt-0.5 max-w-80 truncate font-mono text-[11px] text-muted-foreground">
+                  使用密钥：{testResult.keyPath}
+                </div>
                 <div
                   className={cn(
                     "text-[11px] font-medium",
@@ -468,7 +471,7 @@ export default function SshManager() {
           <pre className="max-h-48 overflow-auto bg-muted/40 p-4 font-mono text-[11px] leading-relaxed">
             <span className="text-muted-foreground/70">$ </span>
             <span className="text-muted-foreground">
-              ssh -T {testResult.host}
+              ssh -T -i {testResult.keyPath} -o IdentitiesOnly=yes {testResult.host}
             </span>
             {"\n"}
             {testResult.message || "无输出"}

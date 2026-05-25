@@ -10,6 +10,7 @@ use crate::core::ssh_config::{self, SshKeyInfo};
 #[serde(rename_all = "camelCase")]
 pub struct SshTestResult {
     pub host: String,
+    pub key_path: String,
     pub success: bool,
     pub message: String,
 }
@@ -84,10 +85,15 @@ pub fn read_ssh_public_key(path: String) -> AppResult<String> {
 }
 
 #[tauri::command]
-pub fn test_ssh_connection(host: String) -> AppResult<SshTestResult> {
+pub fn test_ssh_connection(host: String, key_path: String) -> AppResult<SshTestResult> {
     let host = sanitize_host(&host)?;
+    let key_path = validate_private_key_path(&key_path)?;
     let output = Command::new("ssh")
         .arg("-T")
+        .arg("-i")
+        .arg(&key_path)
+        .arg("-o")
+        .arg("IdentitiesOnly=yes")
         .arg("-o")
         .arg("BatchMode=yes")
         .arg("-o")
@@ -102,6 +108,7 @@ pub fn test_ssh_connection(host: String) -> AppResult<SshTestResult> {
 
     Ok(SshTestResult {
         host,
+        key_path: key_path.to_string_lossy().to_string(),
         success,
         message,
     })
@@ -127,7 +134,9 @@ fn sanitize_file_name(input: &str) -> AppResult<String> {
         || value.contains('\\')
         || value.chars().any(char::is_whitespace)
     {
-        return Err(AppError::InvalidArgument("invalid SSH key file name".into()));
+        return Err(AppError::InvalidArgument(
+            "invalid SSH key file name".into(),
+        ));
     }
     Ok(value.to_string())
 }
@@ -135,13 +144,29 @@ fn sanitize_file_name(input: &str) -> AppResult<String> {
 fn sanitize_host(input: &str) -> AppResult<String> {
     let value = input.trim();
     if value.is_empty()
-        || value.chars().any(|c| {
-            !(c.is_ascii_alphanumeric() || matches!(c, '.' | '-' | '_' | '@' | ':'))
-        })
+        || value
+            .chars()
+            .any(|c| !(c.is_ascii_alphanumeric() || matches!(c, '.' | '-' | '_' | '@' | ':')))
     {
         return Err(AppError::InvalidArgument("invalid SSH host".into()));
     }
     Ok(value.to_string())
+}
+
+fn validate_private_key_path(input: &str) -> AppResult<PathBuf> {
+    let Some(dir) = ssh_config::ssh_dir() else {
+        return Err(AppError::Other("no home dir".into()));
+    };
+    let key_path = PathBuf::from(input.trim());
+    let dir = dir.canonicalize().unwrap_or(dir);
+    let canonical = key_path
+        .canonicalize()
+        .map_err(|_| AppError::InvalidArgument("private key not found".into()))?;
+    if !canonical.starts_with(&dir) || canonical.extension().and_then(|e| e.to_str()) == Some("pub")
+    {
+        return Err(AppError::InvalidArgument("invalid private key path".into()));
+    }
+    Ok(canonical)
 }
 
 fn ensure_inside_dir(dir: &Path, path: &PathBuf) -> AppResult<()> {
@@ -149,7 +174,9 @@ fn ensure_inside_dir(dir: &Path, path: &PathBuf) -> AppResult<()> {
     let parent = path
         .parent()
         .ok_or_else(|| AppError::InvalidArgument("invalid SSH key path".into()))?;
-    let parent = parent.canonicalize().unwrap_or_else(|_| parent.to_path_buf());
+    let parent = parent
+        .canonicalize()
+        .unwrap_or_else(|_| parent.to_path_buf());
     if parent != dir {
         return Err(AppError::InvalidArgument("invalid SSH key path".into()));
     }

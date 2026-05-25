@@ -7,8 +7,8 @@ use crate::core::git_config::{self, ConfigScope, GitConfigSnapshot};
 use crate::core::switcher::{self, SwitchResult, SwitchScope};
 use crate::AppState;
 
-const MAX_HISTORY: usize = 200;
-const MAX_BACKUPS: usize = 20;
+pub const MAX_HISTORY: usize = 200;
+pub const MAX_BACKUPS: usize = 20;
 
 #[tauri::command]
 pub fn switch_profile(
@@ -56,8 +56,7 @@ pub fn switch_profile(
             })
         }
         Err(e) => {
-            let record =
-                switcher::make_record(&profile, &scope, false, Some(e.to_string()));
+            let record = switcher::make_record(&profile, &scope, false, Some(e.to_string()));
             store.push_history(record, MAX_HISTORY);
             store.save()?;
             Err(e)

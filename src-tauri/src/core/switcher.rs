@@ -11,7 +11,9 @@ use super::profile::{Profile, Scope, SwitchRecord};
 pub enum SwitchScope {
     Global,
     #[serde(rename_all = "camelCase")]
-    Local { path: String },
+    Local {
+        path: String,
+    },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

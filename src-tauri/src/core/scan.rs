@@ -97,7 +97,10 @@ fn list_gpg_keys() -> AppResult<Vec<GpgKeyInfo>> {
                     current = Some(GpgKeyInfo {
                         key_id: key_id.to_string(),
                         uid: None,
-                        expires: parts.get(6).filter(|s| !s.is_empty()).map(|s| s.to_string()),
+                        expires: parts
+                            .get(6)
+                            .filter(|s| !s.is_empty())
+                            .map(|s| s.to_string()),
                     });
                 }
             }
@@ -122,7 +125,14 @@ fn discover_directory_identities() -> Vec<DiscoveredIdentity> {
     let Some(home) = dirs::home_dir() else {
         return vec![];
     };
-    let roots = ["work", "personal", "code", "projects", "Documents/code", "Documents/work"];
+    let roots = [
+        "work",
+        "personal",
+        "code",
+        "projects",
+        "Documents/code",
+        "Documents/work",
+    ];
     let mut seen: HashSet<String> = HashSet::new();
     let mut out: Vec<DiscoveredIdentity> = vec![];
 

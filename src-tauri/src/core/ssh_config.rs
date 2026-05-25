@@ -77,7 +77,11 @@ pub fn enumerate_keys() -> AppResult<Vec<SshKeyInfo>> {
             } else {
                 None
             };
-            (Some(pub_path.to_string_lossy().to_string()), key_type, comment)
+            (
+                Some(pub_path.to_string_lossy().to_string()),
+                key_type,
+                comment,
+            )
         } else {
             (None, None, None)
         };
@@ -119,12 +123,7 @@ pub fn update_host_config(cfg: &SshConfig) -> AppResult<bool> {
     let content = std::fs::read_to_string(&path).unwrap_or_default();
     let managed_block = render_managed_host_block(cfg, host, real_host);
     let next = if let Some((start, end)) = find_managed_block(&content) {
-        format!(
-            "{}{}{}",
-            &content[..start],
-            managed_block,
-            &content[end..]
-        )
+        format!("{}{}{}", &content[..start], managed_block, &content[end..])
     } else if content.trim().is_empty() {
         format!("{managed_block}\n")
     } else {
@@ -184,7 +183,10 @@ pub fn parse_ssh_config(path: &Path) -> AppResult<Vec<SshHostEntry>> {
             continue;
         }
         let (key, value) = match line.split_once(|c: char| c.is_whitespace() || c == '=') {
-            Some((k, v)) => (k.trim().to_lowercase(), v.trim().trim_matches('"').to_string()),
+            Some((k, v)) => (
+                k.trim().to_lowercase(),
+                v.trim().trim_matches('"').to_string(),
+            ),
             None => continue,
         };
         match key.as_str() {

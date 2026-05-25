@@ -50,6 +50,7 @@ export interface SshKeyInfo {
 
 export interface SshTestResult {
   host: string;
+  keyPath: string;
   success: boolean;
   message: string;
 }

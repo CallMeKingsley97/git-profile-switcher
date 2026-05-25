@@ -1,4 +1,4 @@
-use tauri::State;
+use tauri::{AppHandle, State};
 
 use crate::core::error::{AppError, AppResult};
 use crate::core::profile::Profile;
@@ -20,7 +20,11 @@ pub fn get_profile(state: State<'_, AppState>, id: String) -> AppResult<Profile>
 }
 
 #[tauri::command]
-pub fn create_profile(state: State<'_, AppState>, profile: Profile) -> AppResult<Profile> {
+pub fn create_profile(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    profile: Profile,
+) -> AppResult<Profile> {
     let mut store = state.store.lock().unwrap();
     let mut p = profile;
     if p.id.is_empty() {
@@ -31,11 +35,14 @@ pub fn create_profile(state: State<'_, AppState>, profile: Profile) -> AppResult
     p.updated_at = now;
     store.data.profiles.push(p.clone());
     store.save()?;
+    drop(store);
+    let _ = crate::refresh_tray_menu(&app);
     Ok(p)
 }
 
 #[tauri::command]
 pub fn update_profile(
+    app: AppHandle,
     state: State<'_, AppState>,
     id: String,
     profile: Profile,
@@ -53,11 +60,13 @@ pub fn update_profile(
     };
     let snapshot = target.clone();
     store.save()?;
+    drop(store);
+    let _ = crate::refresh_tray_menu(&app);
     Ok(snapshot)
 }
 
 #[tauri::command]
-pub fn delete_profile(state: State<'_, AppState>, id: String) -> AppResult<()> {
+pub fn delete_profile(app: AppHandle, state: State<'_, AppState>, id: String) -> AppResult<()> {
     let mut store = state.store.lock().unwrap();
     let before = store.data.profiles.len();
     store.data.profiles.retain(|p| p.id != id);
@@ -68,11 +77,17 @@ pub fn delete_profile(state: State<'_, AppState>, id: String) -> AppResult<()> {
         store.data.active_profile_id = None;
     }
     store.save()?;
+    drop(store);
+    let _ = crate::refresh_tray_menu(&app);
     Ok(())
 }
 
 #[tauri::command]
-pub fn duplicate_profile(state: State<'_, AppState>, id: String) -> AppResult<Profile> {
+pub fn duplicate_profile(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    id: String,
+) -> AppResult<Profile> {
     let mut store = state.store.lock().unwrap();
     let original = store
         .find(&id)
@@ -89,6 +104,8 @@ pub fn duplicate_profile(state: State<'_, AppState>, id: String) -> AppResult<Pr
     };
     store.data.profiles.push(copy.clone());
     store.save()?;
+    drop(store);
+    let _ = crate::refresh_tray_menu(&app);
     Ok(copy)
 }
 

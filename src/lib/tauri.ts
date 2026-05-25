@@ -55,8 +55,8 @@ export const api = {
       comment,
       passphrase,
     }),
-  testSshConnection: (host: string) =>
-    invoke<SshTestResult>("test_ssh_connection", { host }),
+  testSshConnection: (host: string, keyPath: string) =>
+    invoke<SshTestResult>("test_ssh_connection", { host, keyPath }),
   readSshPublicKey: (path: string) =>
     invoke<string>("read_ssh_public_key", { path }),
 
