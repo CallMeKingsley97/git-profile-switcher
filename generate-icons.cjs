@@ -67,11 +67,10 @@ function render(size) {
   // Geometry (normalized to 1024 then scaled)
   const k = size / 1024;
   const cx = size / 2, cy = size / 2;
-  // macOS icon safe area: visible content should occupy ~824/1024 of the canvas,
-  // leaving ~100px transparent padding on each side so the icon visually matches
-  // other apps in the Dock / Launchpad.
-  const bgHalf = 412 * k;
-  const bgRadius = 185 * k;
+  // macOS icon safe area: keep visible content smaller than the full canvas
+  // so the app matches standard Dock / Launchpad icon sizing.
+  const bgHalf = 384 * k;
+  const bgRadius = 172 * k;
 
   // Inner graphic is laid out in the original 1024-design space, then scaled
   // by `s` to fit inside the new (smaller) background safe area, and recentered.
