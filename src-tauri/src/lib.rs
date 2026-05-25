@@ -97,7 +97,13 @@ fn setup_tray(manager: &AppHandle) -> tauri::Result<()> {
         .items(&[&switch_menu, &separator, &show, &quit])
         .build()?;
 
-    TrayIconBuilder::with_id("main")
+    let icon = manager.default_window_icon().cloned();
+
+    let mut tray = TrayIconBuilder::with_id("main");
+    if let Some(icon) = icon {
+        tray = tray.icon(icon).icon_as_template(false);
+    }
+    tray
         .menu(&menu)
         .show_menu_on_left_click(true)
         .on_menu_event(|app, event| match event.id.as_ref() {
