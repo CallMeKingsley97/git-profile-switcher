@@ -1,11 +1,20 @@
 import { useEffect, useState } from "react";
 import { open } from "@tauri-apps/plugin-dialog";
 import { Link } from "react-router-dom";
-import { CheckCircle2, AlertCircle, RefreshCw } from "lucide-react";
+import {
+  AlertCircle,
+  CheckCircle2,
+  ChevronRight,
+  FolderOpen,
+  Loader2,
+  Plus,
+  RefreshCw,
+  XCircle,
+} from "lucide-react";
 import { api } from "@/lib/tauri";
 import { useProfileStore } from "@/store/profileStore";
 import type { GitConfigSnapshot, SwitchRecord } from "@/types";
-import { formatDateTime } from "@/lib/utils";
+import { cn, formatDateTime } from "@/lib/utils";
 
 export default function Dashboard() {
   const { profiles, activeProfile, refresh } = useProfileStore();
@@ -14,18 +23,22 @@ export default function Dashboard() {
   const [switching, setSwitching] = useState<string | null>(null);
   const [localPath, setLocalPath] = useState("");
   const [localSwitching, setLocalSwitching] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const load = async () => {
+    setRefreshing(true);
     try {
       const [snap, hist] = await Promise.all([
         api.getCurrentGitConfig({ type: "Global" }),
-        api.listHistory(10),
+        api.listHistory(6),
       ]);
       setSnapshot(snap);
       setHistory(hist);
     } catch (e: any) {
       setError(String(e?.message ?? e));
+    } finally {
+      setRefreshing(false);
     }
   };
 
@@ -70,42 +83,71 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="space-y-6">
-      <header className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">仪表盘</h1>
+    <div className="space-y-7 fade-in">
+      <header className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-[28px] font-semibold tracking-tight">仪表盘</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            一目了然地查看当前 Git 身份，并快速切换。
+          </p>
+        </div>
         <button
           onClick={load}
-          className="inline-flex items-center gap-1 rounded-md border px-3 py-1.5 text-sm hover:bg-accent"
+          className="btn-secondary !px-3"
+          title="刷新"
         >
-          <RefreshCw className="h-3.5 w-3.5" /> 刷新
+          <RefreshCw
+            className={cn("h-4 w-4", refreshing && "animate-spin")}
+            strokeWidth={2.2}
+          />
         </button>
       </header>
 
       {error && (
-        <div className="flex items-center gap-2 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-          <AlertCircle className="h-4 w-4" /> {error}
+        <div className="surface-card flex items-start gap-2 border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" /> {error}
         </div>
       )}
 
-      <section className="rounded-lg border bg-card p-5">
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-sm font-medium text-muted-foreground">
-            当前激活
-          </h2>
-          {activeProfile ? (
-            <span className="inline-flex items-center gap-1 text-xs text-emerald-600">
-              <CheckCircle2 className="h-3.5 w-3.5" /> {activeProfile.name}
+      <section className="surface-card-elevated relative overflow-hidden">
+        <div className="absolute inset-0 bg-mesh opacity-60" />
+        <div className="relative flex items-start justify-between gap-4 p-6">
+          <div className="space-y-1">
+            <div className="section-title">当前激活</div>
+            <div className="flex items-baseline gap-2">
+              {activeProfile ? (
+                <>
+                  <span className="text-2xl">{activeProfile.icon || "👤"}</span>
+                  <span className="text-xl font-semibold tracking-tight">
+                    {activeProfile.name}
+                  </span>
+                </>
+              ) : (
+                <span className="text-xl font-semibold text-muted-foreground">
+                  未设置
+                </span>
+              )}
+            </div>
+            <div className="text-sm text-muted-foreground">
+              {snapshot?.userEmail || "—"}
+            </div>
+          </div>
+          {activeProfile && (
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-700 dark:text-emerald-400">
+              <span className="relative flex h-1.5 w-1.5">
+                <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-75 animate-pulse-ring" />
+                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500" />
+              </span>
+              在用
             </span>
-          ) : (
-            <span className="text-xs text-muted-foreground">未设置</span>
           )}
         </div>
-        <dl className="grid grid-cols-2 gap-3 text-sm">
-          <Row label="user.name" value={snapshot?.userName} />
-          <Row label="user.email" value={snapshot?.userEmail} />
-          <Row label="signing key" value={snapshot?.signingKey} />
-          <Row
-            label="commit.gpgsign"
+        <div className="relative grid grid-cols-2 gap-x-6 gap-y-3 border-t bg-background/40 px-6 py-4 backdrop-blur-sm md:grid-cols-4">
+          <DataItem label="user.name" value={snapshot?.userName} />
+          <DataItem label="user.email" value={snapshot?.userEmail} mono />
+          <DataItem label="signing key" value={snapshot?.signingKey} mono />
+          <DataItem
+            label="gpg sign"
             value={
               snapshot?.gpgSign === undefined
                 ? undefined
@@ -114,63 +156,94 @@ export default function Dashboard() {
                   : "false"
             }
           />
-        </dl>
+        </div>
       </section>
 
       <section>
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-sm font-medium text-muted-foreground">
-            快速切换
-          </h2>
+        <div className="mb-3 flex items-center justify-between px-1">
+          <h2 className="section-title">快速切换</h2>
           <Link
             to="/profiles/new"
-            className="text-xs text-primary hover:underline"
+            className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
           >
-            + 新建
+            <Plus className="h-3 w-3" /> 新建
           </Link>
         </div>
         {profiles.length === 0 ? (
-          <div className="rounded-md border border-dashed p-8 text-center text-sm text-muted-foreground">
-            还没有任何 profile。
-            <Link to="/profiles/new" className="ml-1 text-primary hover:underline">
-              创建第一个
-            </Link>
+          <div className="surface-card flex flex-col items-center gap-3 py-12 text-center">
+            <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-muted text-muted-foreground">
+              <Plus className="h-5 w-5" />
+            </span>
+            <div>
+              <div className="text-sm font-medium">还没有任何 profile</div>
+              <Link
+                to="/profiles/new"
+                className="mt-1 text-xs text-primary hover:underline"
+              >
+                创建第一个 →
+              </Link>
+            </div>
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {profiles.map((p) => {
               const active = activeProfile?.id === p.id;
+              const isSwitching = switching === p.id;
               return (
-                <div
+                <button
                   key={p.id}
-                  className="rounded-lg border bg-card p-4 transition-colors hover:border-primary/40"
+                  disabled={active || isSwitching}
+                  onClick={() => handleSwitch(p.id)}
+                  className={cn(
+                    "surface-card group relative overflow-hidden p-4 text-left transition-all duration-200",
+                    "disabled:cursor-default",
+                    !active &&
+                      !isSwitching &&
+                      "hover:-translate-y-0.5 hover:shadow-soft-lg hover:ring-1 hover:ring-primary/30",
+                    active && "ring-2 ring-emerald-500/40",
+                  )}
                 >
-                  <div className="flex items-center justify-between">
-                    <div className="font-medium">
-                      {p.icon ? `${p.icon} ` : ""}
-                      {p.name}
+                  {active && (
+                    <span className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-medium text-emerald-700 dark:text-emerald-400">
+                      <CheckCircle2 className="h-3 w-3" strokeWidth={2.5} />
+                      激活
+                    </span>
+                  )}
+                  <div className="flex items-center gap-3">
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-muted to-muted/50 text-xl">
+                      {p.icon || "👤"}
+                    </span>
+                    <div className="min-w-0">
+                      <div className="truncate text-[15px] font-semibold tracking-tight">
+                        {p.name}
+                      </div>
+                      <div className="truncate text-[11px] text-muted-foreground">
+                        {p.git.userEmail}
+                      </div>
                     </div>
-                    {active && (
-                      <span className="rounded bg-emerald-500/10 px-1.5 py-0.5 text-xs text-emerald-600">
-                        ● 激活
-                      </span>
+                  </div>
+                  <div
+                    className={cn(
+                      "mt-3 inline-flex items-center gap-1 text-[11px] font-medium",
+                      active
+                        ? "text-emerald-600"
+                        : "text-primary opacity-0 transition-opacity group-hover:opacity-100",
+                    )}
+                  >
+                    {isSwitching ? (
+                      <>
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                        切换中…
+                      </>
+                    ) : active ? (
+                      "正在使用"
+                    ) : (
+                      <>
+                        切换到此 <ChevronRight className="h-3 w-3" />
+                      </>
                     )}
                   </div>
-                  <div className="mt-1 text-xs text-muted-foreground">
-                    {p.git.userEmail}
-                  </div>
-                  <button
-                    disabled={active || switching === p.id}
-                    onClick={() => handleSwitch(p.id)}
-                    className="mt-3 w-full rounded-md border px-3 py-1.5 text-xs hover:bg-accent disabled:opacity-50"
-                  >
-                    {switching === p.id
-                      ? "切换中…"
-                      : active
-                        ? "已激活"
-                        : "切换到此"}
-                  </button>
-                </div>
+                </button>
               );
             })}
           </div>
@@ -178,71 +251,93 @@ export default function Dashboard() {
       </section>
 
       <section>
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-sm font-medium text-muted-foreground">
-            仓库级切换
-          </h2>
-          <button
-            onClick={handlePickDirectory}
-            className="text-xs text-primary hover:underline"
-          >
-            选择目录
-          </button>
+        <div className="mb-3 flex items-center justify-between px-1">
+          <h2 className="section-title">仓库级切换</h2>
         </div>
-        <div className="rounded-lg border bg-card p-4">
+        <div className="surface-card space-y-3 p-4">
           <div className="flex gap-2">
             <input
-              className="input flex-1"
+              className="field-input flex-1"
               value={localPath}
               onChange={(e) => setLocalPath(e.target.value)}
               placeholder="选择或输入 Git 仓库目录"
             />
             <button
               onClick={handlePickDirectory}
-              className="rounded-md border px-3 py-1.5 text-xs hover:bg-accent"
+              className="btn-secondary !px-3"
+              title="浏览目录"
             >
+              <FolderOpen className="h-4 w-4" />
               浏览
             </button>
           </div>
-          <div className="mt-3 grid grid-cols-2 gap-2 md:grid-cols-3">
-            {profiles.map((p) => (
-              <button
-                key={p.id}
-                disabled={!localPath.trim() || localSwitching === p.id}
-                onClick={() => handleLocalSwitch(p.id)}
-                className="rounded-md border px-3 py-2 text-left text-xs hover:bg-accent disabled:opacity-50"
-              >
-                <span className="block font-medium">
-                  {p.icon ? `${p.icon} ` : ""}
-                  {p.name}
-                </span>
-                <span className="block truncate text-muted-foreground">
-                  {localSwitching === p.id ? "切换中…" : p.git.userEmail}
-                </span>
-              </button>
-            ))}
-          </div>
+          {profiles.length > 0 && (
+            <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
+              {profiles.map((p) => (
+                <button
+                  key={p.id}
+                  disabled={!localPath.trim() || localSwitching === p.id}
+                  onClick={() => handleLocalSwitch(p.id)}
+                  className="group flex items-center gap-2 rounded-xl border bg-card px-3 py-2 text-left text-xs transition-all hover:bg-accent disabled:opacity-50"
+                >
+                  <span className="text-base">{p.icon || "👤"}</span>
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate font-medium">{p.name}</div>
+                    <div className="truncate text-[11px] text-muted-foreground">
+                      {localSwitching === p.id ? "切换中…" : p.git.userEmail}
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 
       <section>
-        <h2 className="mb-3 text-sm font-medium text-muted-foreground">
-          最近活动
-        </h2>
+        <div className="mb-3 flex items-center justify-between px-1">
+          <h2 className="section-title">最近活动</h2>
+          <Link
+            to="/history"
+            className="text-xs font-medium text-primary hover:underline"
+          >
+            查看全部 →
+          </Link>
+        </div>
         {history.length === 0 ? (
-          <p className="text-sm text-muted-foreground">暂无记录。</p>
+          <div className="surface-card py-8 text-center text-sm text-muted-foreground">
+            暂无切换记录
+          </div>
         ) : (
-          <ul className="space-y-1.5 text-sm">
+          <ul className="surface-card divide-y overflow-hidden">
             {history.map((h) => (
               <li
                 key={h.id}
-                className="flex items-center justify-between rounded-md border bg-card px-3 py-2"
+                className="flex items-center gap-3 px-4 py-3 text-sm"
               >
-                <span>
-                  {h.success ? "✓" : "✗"} 切换到「{h.profileName}」(
-                  {h.scope})
+                <span
+                  className={cn(
+                    "flex h-7 w-7 shrink-0 items-center justify-center rounded-full",
+                    h.success
+                      ? "bg-emerald-500/10 text-emerald-600"
+                      : "bg-destructive/10 text-destructive",
+                  )}
+                >
+                  {h.success ? (
+                    <CheckCircle2 className="h-4 w-4" strokeWidth={2.5} />
+                  ) : (
+                    <XCircle className="h-4 w-4" strokeWidth={2.5} />
+                  )}
                 </span>
-                <span className="text-xs text-muted-foreground">
+                <div className="min-w-0 flex-1">
+                  <div className="truncate font-medium">
+                    切换到「{h.profileName}」
+                  </div>
+                  <div className="text-[11px] text-muted-foreground">
+                    {h.scope}
+                  </div>
+                </div>
+                <span className="text-[11px] text-muted-foreground">
                   {formatDateTime(h.timestamp)}
                 </span>
               </li>
@@ -250,28 +345,34 @@ export default function Dashboard() {
           </ul>
         )}
       </section>
-
-      <style>{`
-        .input {
-          width: 100%;
-          border-radius: 0.375rem;
-          border: 1px solid hsl(var(--border));
-          background: hsl(var(--background));
-          padding: 0.4rem 0.6rem;
-          font-size: 0.8rem;
-          outline: none;
-        }
-        .input:focus { border-color: hsl(var(--primary)); }
-      `}</style>
     </div>
   );
 }
 
-function Row({ label, value }: { label: string; value?: string }) {
+function DataItem({
+  label,
+  value,
+  mono,
+}: {
+  label: string;
+  value?: string;
+  mono?: boolean;
+}) {
   return (
-    <>
-      <dt className="text-muted-foreground">{label}</dt>
-      <dd className="font-mono text-xs">{value || "—"}</dd>
-    </>
+    <div className="space-y-0.5">
+      <div className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+        {label}
+      </div>
+      <div
+        className={cn(
+          "truncate text-[13px]",
+          mono && "font-mono",
+          !value && "text-muted-foreground/60",
+        )}
+        title={value}
+      >
+        {value || "—"}
+      </div>
+    </div>
   );
 }

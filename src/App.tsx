@@ -34,16 +34,22 @@ export default function App() {
 
   if (!booted) {
     return (
-      <div className="flex h-screen items-center justify-center text-muted-foreground">
-        启动中…
+      <div className="flex h-screen items-center justify-center gap-3 text-muted-foreground">
+        <span className="h-4 w-4 animate-spin rounded-full border-2 border-muted-foreground/30 border-t-primary" />
+        <span className="text-sm">启动中…</span>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="flex h-screen items-center justify-center text-destructive">
-        启动失败：{error}
+      <div className="flex h-screen items-center justify-center p-8">
+        <div className="surface-card-elevated max-w-md p-6 text-center">
+          <div className="mb-3 text-sm font-medium text-destructive">
+            启动失败
+          </div>
+          <div className="text-xs text-muted-foreground">{error}</div>
+        </div>
       </div>
     );
   }
@@ -51,17 +57,19 @@ export default function App() {
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-background text-foreground">
       <Sidebar />
-      <main className="flex-1 overflow-y-auto p-6">
-        <Routes>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/profiles" element={<ProfileList />} />
-          <Route path="/profiles/new" element={<ProfileEditor />} />
-          <Route path="/profiles/:id" element={<ProfileEditor />} />
-          <Route path="/first-run" element={<FirstRunWizard />} />
-          <Route path="/history" element={<History />} />
-          <Route path="/ssh" element={<SshManager />} />
-          <Route path="/settings" element={<Settings />} />
-        </Routes>
+      <main className="relative flex-1 overflow-y-auto">
+        <div className="mx-auto max-w-6xl px-8 py-8">
+          <Routes>
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/profiles" element={<ProfileList />} />
+            <Route path="/profiles/new" element={<ProfileEditor />} />
+            <Route path="/profiles/:id" element={<ProfileEditor />} />
+            <Route path="/first-run" element={<FirstRunWizard />} />
+            <Route path="/history" element={<History />} />
+            <Route path="/ssh" element={<SshManager />} />
+            <Route path="/settings" element={<Settings />} />
+          </Routes>
+        </div>
       </main>
     </div>
   );

@@ -57,6 +57,8 @@ export const api = {
     }),
   testSshConnection: (host: string) =>
     invoke<SshTestResult>("test_ssh_connection", { host }),
+  readSshPublicKey: (path: string) =>
+    invoke<string>("read_ssh_public_key", { path }),
 
   // system integration
   getSystemIntegrationStatus: () =>

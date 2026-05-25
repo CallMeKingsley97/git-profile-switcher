@@ -64,6 +64,7 @@ pub fn run() {
             commands::history::list_history,
             commands::ssh::list_ssh_keys,
             commands::ssh::generate_ssh_key,
+            commands::ssh::read_ssh_public_key,
             commands::ssh::test_ssh_connection,
             commands::system::get_system_integration_status,
             commands::system::set_autostart,

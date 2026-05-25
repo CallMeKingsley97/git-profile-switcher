@@ -1,8 +1,18 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Loader2, Sparkles } from "lucide-react";
+import {
+  Check,
+  ChevronRight,
+  KeyRound,
+  Loader2,
+  Sparkles,
+  Star,
+  Wand2,
+  XCircle,
+} from "lucide-react";
 import { api } from "@/lib/tauri";
 import { useProfileStore } from "@/store/profileStore";
+import { cn } from "@/lib/utils";
 import type {
   DiscoveredIdentity,
   EnvScanReport,
@@ -56,7 +66,7 @@ export default function FirstRunWizard() {
     try {
       const selections = drafts
         .filter((d) => d.enabled && d.name.trim() && d.git.userEmail.trim())
-        .map<ProfileDraft>(({ enabled, source, ...rest }) => rest);
+        .map<ProfileDraft>(({ enabled: _e, source: _s, ...rest }) => rest);
       if (selections.length === 0) {
         await api.markFirstRunCompleted();
       } else {
@@ -73,22 +83,37 @@ export default function FirstRunWizard() {
 
   if (scanning) {
     return (
-      <div className="flex h-full flex-col items-center justify-center gap-3 text-muted-foreground">
-        <Loader2 className="h-6 w-6 animate-spin" />
-        正在扫描本机 Git / SSH / GPG 配置…
+      <div className="mx-auto flex h-[60vh] max-w-md flex-col items-center justify-center gap-4 text-center">
+        <div className="relative">
+          <span className="absolute -inset-2 animate-pulse-ring rounded-full bg-primary/30" />
+          <span className="relative flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-blue-600 text-white shadow-soft-lg">
+            <Wand2 className="h-6 w-6" strokeWidth={2.4} />
+          </span>
+        </div>
+        <div className="space-y-1">
+          <div className="text-base font-semibold tracking-tight">
+            正在扫描本机环境…
+          </div>
+          <div className="text-xs text-muted-foreground">
+            Git / SSH / GPG 配置（仅读取，不修改任何文件）
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
-      <header className="flex items-start justify-between">
-        <div>
-          <h1 className="flex items-center gap-2 text-2xl font-semibold">
-            <Sparkles className="h-5 w-5 text-primary" />
+    <div className="mx-auto max-w-3xl space-y-6 fade-in">
+      <header className="flex items-start justify-between gap-4">
+        <div className="space-y-2">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-amber-400/20 to-pink-500/20 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-pink-600 dark:text-pink-400">
+            <Sparkles className="h-3 w-3" />
+            首次启动
+          </span>
+          <h1 className="text-[28px] font-semibold tracking-tight">
             欢迎使用
           </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <p className="text-sm text-muted-foreground">
             我们已扫描本机现有 Git 环境，下面是建议导入的 profile。所有操作均为只读，未修改任何文件。
           </p>
         </div>
@@ -101,73 +126,109 @@ export default function FirstRunWizard() {
       </header>
 
       {error && (
-        <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-          {error}
+        <div className="surface-card flex items-start gap-2 border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
+          <XCircle className="mt-0.5 h-4 w-4 shrink-0" /> {error}
         </div>
       )}
 
       {report && (
-        <section className="rounded-lg border bg-card p-4 text-sm">
-          <h2 className="mb-2 text-xs font-medium uppercase text-muted-foreground">
-            扫描概览
-          </h2>
-          <ul className="grid grid-cols-2 gap-2 text-xs">
-            <li>
-              全局 user.email：
-              <span className="font-mono">
-                {report.globalGitConfig.userEmail ?? "—"}
-              </span>
-            </li>
-            <li>
-              SSH key：<span className="font-mono">{report.sshKeys.length}</span>
-            </li>
-            <li>
-              ~/.ssh/config Host：
-              <span className="font-mono">
-                {report.sshConfigHosts.length}
-              </span>
-            </li>
-            <li>
-              GPG key：<span className="font-mono">{report.gpgKeys.length}</span>
-            </li>
-            <li className="col-span-2">
-              检测到的目录身份：
-              <span className="font-mono">
-                {report.discoveredIdentities.length}
-              </span>
-            </li>
-          </ul>
+        <section className="surface-card overflow-hidden">
+          <div className="border-b bg-gradient-to-br from-primary/5 to-transparent px-5 py-3">
+            <div className="section-title">扫描概览</div>
+          </div>
+          <div className="grid grid-cols-2 gap-x-6 gap-y-3 p-5 md:grid-cols-4">
+            <StatItem
+              label="全局 email"
+              value={report.globalGitConfig.userEmail ?? "—"}
+              mono
+            />
+            <StatItem
+              label="SSH key"
+              value={String(report.sshKeys.length)}
+            />
+            <StatItem
+              label="SSH Host"
+              value={String(report.sshConfigHosts.length)}
+            />
+            <StatItem
+              label="GPG key"
+              value={String(report.gpgKeys.length)}
+            />
+            <div className="col-span-2 md:col-span-4">
+              <StatItem
+                label="检测到的目录身份"
+                value={String(report.discoveredIdentities.length)}
+              />
+            </div>
+          </div>
         </section>
       )}
 
       <section className="space-y-3">
-        <h2 className="text-sm font-medium text-muted-foreground">
-          建议导入（已勾选 {enabledCount} / {drafts.length}）
-        </h2>
+        <div className="flex items-center justify-between px-1">
+          <h2 className="section-title">
+            建议导入 · 已选 {enabledCount}/{drafts.length}
+          </h2>
+        </div>
         {drafts.length === 0 ? (
-          <p className="rounded-md border border-dashed p-6 text-center text-sm text-muted-foreground">
-            未检测到可导入的身份。你可以稍后手动新建 profile。
-          </p>
+          <div className="surface-card flex flex-col items-center gap-2 py-12 text-center">
+            <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-muted text-muted-foreground">
+              <KeyRound className="h-5 w-5" />
+            </span>
+            <div className="text-sm text-muted-foreground">
+              未检测到可导入的身份。可以稍后手动创建 profile。
+            </div>
+          </div>
         ) : (
           drafts.map((d, idx) => (
-            <div
+            <article
               key={idx}
-              className="rounded-lg border bg-card p-4 text-sm"
+              className={cn(
+                "surface-card overflow-hidden transition-all",
+                d.enabled && "ring-1 ring-primary/20",
+              )}
             >
-              <label className="mb-2 flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={d.enabled}
-                  onChange={(e) =>
-                    updateDraft(setDrafts, idx, { enabled: e.target.checked })
-                  }
-                />
-                <span className="font-medium">{d.source}</span>
-              </label>
-              <div className="grid grid-cols-2 gap-3">
+              <header className="flex items-center justify-between gap-3 border-b bg-muted/20 px-5 py-3">
+                <label className="flex flex-1 cursor-pointer items-center gap-3">
+                  <CheckBox
+                    checked={d.enabled}
+                    onChange={(e) =>
+                      updateDraft(setDrafts, idx, { enabled: e.target.checked })
+                    }
+                  />
+                  <span className="text-[13px] font-semibold">{d.source}</span>
+                </label>
+                <label className="flex shrink-0 cursor-pointer items-center gap-1.5 text-[11px] text-muted-foreground">
+                  <input
+                    type="radio"
+                    name="active"
+                    checked={d.makeActive}
+                    onChange={() =>
+                      setDrafts((prev) =>
+                        prev.map((x, i) => ({ ...x, makeActive: i === idx })),
+                      )
+                    }
+                    className="sr-only peer"
+                  />
+                  <span
+                    className={cn(
+                      "flex h-4 w-4 items-center justify-center rounded-full border transition-colors",
+                      d.makeActive
+                        ? "border-amber-500 bg-amber-500 text-white"
+                        : "border-muted-foreground/30",
+                    )}
+                  >
+                    {d.makeActive && (
+                      <Star className="h-2.5 w-2.5 fill-current" />
+                    )}
+                  </span>
+                  设为激活
+                </label>
+              </header>
+              <div className="grid grid-cols-2 gap-4 p-5">
                 <Field label="名称">
                   <input
-                    className="input"
+                    className="field-input"
                     value={d.name}
                     onChange={(e) =>
                       updateDraft(setDrafts, idx, { name: e.target.value })
@@ -176,7 +237,7 @@ export default function FirstRunWizard() {
                 </Field>
                 <Field label="user.email">
                   <input
-                    className="input"
+                    className="field-input font-mono text-[13px]"
                     value={d.git.userEmail}
                     onChange={(e) =>
                       updateDraft(setDrafts, idx, {
@@ -187,7 +248,7 @@ export default function FirstRunWizard() {
                 </Field>
                 <Field label="user.name">
                   <input
-                    className="input"
+                    className="field-input font-mono text-[13px]"
                     value={d.git.userName}
                     onChange={(e) =>
                       updateDraft(setDrafts, idx, {
@@ -198,61 +259,68 @@ export default function FirstRunWizard() {
                 </Field>
                 <Field label="SSH key 路径（可选）">
                   <input
-                    className="input"
+                    className="field-input font-mono text-[13px]"
                     value={d.sshKeyPath ?? ""}
                     onChange={(e) =>
-                      updateDraft(setDrafts, idx, {
-                        sshKeyPath: e.target.value,
-                      })
+                      updateDraft(setDrafts, idx, { sshKeyPath: e.target.value })
                     }
                   />
                 </Field>
               </div>
-              <label className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
-                <input
-                  type="radio"
-                  name="active"
-                  checked={d.makeActive}
-                  onChange={() =>
-                    setDrafts((prev) =>
-                      prev.map((x, i) => ({ ...x, makeActive: i === idx })),
-                    )
-                  }
-                />
-                导入后设为当前激活
-              </label>
-            </div>
+            </article>
           ))
         )}
       </section>
 
-      <div className="flex justify-end gap-2 pt-2">
-        <button
-          onClick={handleSkip}
-          className="rounded-md border px-3 py-1.5 text-sm hover:bg-accent"
-        >
+      <div className="sticky bottom-0 -mx-8 flex items-center justify-between gap-2 border-t border-border/60 bg-background/85 px-8 py-4 backdrop-blur-xl">
+        <button onClick={handleSkip} className="btn-ghost">
           稍后再说
         </button>
         <button
           onClick={handleImport}
           disabled={importing}
-          className="rounded-md bg-primary px-3 py-1.5 text-sm text-primary-foreground hover:opacity-90 disabled:opacity-50"
+          className="btn-primary"
         >
-          {importing ? "导入中…" : `导入 ${enabledCount} 个 profile`}
+          {importing ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Sparkles className="h-4 w-4" strokeWidth={2.5} />
+          )}
+          {importing
+            ? "导入中…"
+            : enabledCount > 0
+              ? `导入 ${enabledCount} 个 profile`
+              : "跳过"}
+          <ChevronRight className="h-4 w-4" />
         </button>
       </div>
+    </div>
+  );
+}
 
-      <style>{`
-        .input {
-          width: 100%;
-          border-radius: 0.375rem;
-          border: 1px solid hsl(var(--border));
-          background: hsl(var(--background));
-          padding: 0.4rem 0.6rem;
-          font-size: 0.8rem;
-          outline: none;
-        }
-      `}</style>
+function StatItem({
+  label,
+  value,
+  mono,
+}: {
+  label: string;
+  value: string;
+  mono?: boolean;
+}) {
+  return (
+    <div className="space-y-0.5">
+      <div className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+        {label}
+      </div>
+      <div
+        className={cn(
+          "truncate text-[13px] font-semibold tracking-tight",
+          mono && "font-mono text-[12px]",
+        )}
+        title={value}
+      >
+        {value}
+      </div>
     </div>
   );
 }
@@ -266,9 +334,38 @@ function Field({
 }) {
   return (
     <label className="block">
-      <span className="mb-1 block text-xs text-muted-foreground">{label}</span>
+      <span className="field-label">{label}</span>
       {children}
     </label>
+  );
+}
+
+function CheckBox({
+  checked,
+  onChange,
+}: {
+  checked: boolean;
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+}) {
+  return (
+    <span className="relative flex h-4 w-4 items-center justify-center">
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={onChange}
+        className="peer absolute inset-0 cursor-pointer opacity-0"
+      />
+      <span
+        className={cn(
+          "flex h-4 w-4 items-center justify-center rounded-md border transition-all",
+          checked
+            ? "border-primary bg-gradient-to-br from-primary to-blue-600 text-white shadow-soft-sm"
+            : "border-muted-foreground/30",
+        )}
+      >
+        {checked && <Check className="h-3 w-3" strokeWidth={3} />}
+      </span>
+    </span>
   );
 }
 

@@ -65,6 +65,25 @@ pub fn generate_ssh_key(
 }
 
 #[tauri::command]
+pub fn read_ssh_public_key(path: String) -> AppResult<String> {
+    let Some(dir) = ssh_config::ssh_dir() else {
+        return Err(AppError::Other("no home dir".into()));
+    };
+    let pub_path = PathBuf::from(&path);
+    if pub_path.extension().and_then(|e| e.to_str()) != Some("pub") {
+        return Err(AppError::InvalidArgument("not a public key file".into()));
+    }
+    let dir = dir.canonicalize().unwrap_or(dir);
+    let canonical = pub_path
+        .canonicalize()
+        .map_err(|_| AppError::InvalidArgument("public key not found".into()))?;
+    if !canonical.starts_with(&dir) {
+        return Err(AppError::InvalidArgument("path outside ~/.ssh".into()));
+    }
+    Ok(std::fs::read_to_string(canonical)?.trim().to_string())
+}
+
+#[tauri::command]
 pub fn test_ssh_connection(host: String) -> AppResult<SshTestResult> {
     let host = sanitize_host(&host)?;
     let output = Command::new("ssh")
