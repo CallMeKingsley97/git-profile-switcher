@@ -5,10 +5,12 @@ import {
   AlertCircle,
   CheckCircle2,
   ChevronRight,
+  FolderGit2,
   FolderOpen,
   Loader2,
   Plus,
   RefreshCw,
+  UserRound,
   XCircle,
 } from "lucide-react";
 import { api } from "@/lib/tauri";
@@ -31,7 +33,7 @@ export default function Dashboard() {
     try {
       const [snap, hist] = await Promise.all([
         api.getCurrentGitConfig({ type: "Global" }),
-        api.listHistory(6),
+        api.listHistory(200),
       ]);
       setSnapshot(snap);
       setHistory(hist);
@@ -81,6 +83,15 @@ export default function Dashboard() {
       setLocalSwitching(null);
     }
   };
+
+  const configuredRepositories = history
+    .filter((record) => record.success && record.scope === "local" && record.targetPath)
+    .reduce<SwitchRecord[]>((items, record) => {
+      if (!record.targetPath || items.some((item) => item.targetPath === record.targetPath)) {
+        return items;
+      }
+      return [...items, record];
+    }, []);
 
   return (
     <div className="space-y-7 fade-in">
@@ -296,6 +307,71 @@ export default function Dashboard() {
 
       <section>
         <div className="mb-3 flex items-center justify-between px-1">
+          <h2 className="section-title">已设置仓库身份</h2>
+          <span className="text-[11px] text-muted-foreground">
+            {configuredRepositories.length} 个仓库
+          </span>
+        </div>
+        {configuredRepositories.length === 0 ? (
+          <div className="surface-card flex flex-col items-center gap-3 py-10 text-center">
+            <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-muted text-muted-foreground">
+              <FolderGit2 className="h-5 w-5" strokeWidth={2.3} />
+            </span>
+            <div className="space-y-1">
+              <div className="text-sm font-medium">还没有仓库级身份</div>
+              <div className="text-xs text-muted-foreground">
+                在下方为仓库切换一次 profile 后，这里会显示该仓库当前使用的 Git 身份。
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+            {configuredRepositories.map((record) => {
+              const profile = profiles.find((p) => p.id === record.profileId);
+              const identityName = profile?.git.userName ?? record.profileUserName;
+              const identityEmail = profile?.git.userEmail ?? record.profileEmail;
+              return (
+                <article
+                  key={record.targetPath}
+                  className="surface-card group overflow-hidden transition-all duration-200 hover:-translate-y-0.5 hover:shadow-soft-lg"
+                >
+                  <div className="flex items-start gap-3 p-4">
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                      <FolderGit2 className="h-5 w-5" strokeWidth={2.4} />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <div
+                        className="truncate font-mono text-[12px] font-medium"
+                        title={record.targetPath}
+                      >
+                        {record.targetPath}
+                      </div>
+                      <div className="mt-2 flex flex-wrap items-center gap-2">
+                        <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-1 text-[11px] font-medium text-emerald-700 dark:text-emerald-400">
+                          <UserRound className="h-3 w-3" strokeWidth={2.4} />
+                          {profile?.name ?? record.profileName}
+                        </span>
+                        {record.timestamp && (
+                          <span className="text-[11px] text-muted-foreground">
+                            {formatDateTime(record.timestamp)}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 gap-3 border-t bg-background/40 px-4 py-3 sm:grid-cols-2">
+                    <DataItem label="user.name" value={identityName} />
+                    <DataItem label="user.email" value={identityEmail} mono />
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        )}
+      </section>
+
+      <section>
+        <div className="mb-3 flex items-center justify-between px-1">
           <h2 className="section-title">最近活动</h2>
           <Link
             to="/history"
@@ -310,7 +386,7 @@ export default function Dashboard() {
           </div>
         ) : (
           <ul className="surface-card divide-y overflow-hidden">
-            {history.map((h) => (
+            {history.slice(0, 6).map((h) => (
               <li
                 key={h.id}
                 className="flex items-center gap-3 px-4 py-3 text-sm"

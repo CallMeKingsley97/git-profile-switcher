@@ -110,6 +110,8 @@ export interface SwitchRecord {
   id: string;
   profileId: string;
   profileName: string;
+  profileEmail?: string;
+  profileUserName?: string;
   scope: string;
   targetPath?: string;
   timestamp: string;

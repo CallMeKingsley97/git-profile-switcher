@@ -127,6 +127,8 @@ pub fn make_record(
         id: uuid::Uuid::new_v4().to_string(),
         profile_id: profile.id.clone(),
         profile_name: profile.name.clone(),
+        profile_email: Some(profile.git.user_email.clone()),
+        profile_user_name: Some(profile.git.user_name.clone()),
         scope: scope_str,
         target_path: target,
         timestamp: chrono::Utc::now(),

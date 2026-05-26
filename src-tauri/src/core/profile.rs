@@ -93,6 +93,10 @@ pub struct SwitchRecord {
     pub id: String,
     pub profile_id: String,
     pub profile_name: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub profile_email: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub profile_user_name: Option<String>,
     pub scope: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub target_path: Option<String>,
